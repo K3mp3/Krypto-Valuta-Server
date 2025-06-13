@@ -8,13 +8,17 @@ export const listAllBlocks = (req, res) => {
 export const addBlock = (req, res) => {
   const { data } = req.body;
 
-  blockChain.addBlock({ data });
+  const newBlock = blockChain.addBlock({ data });
 
   saveChainToDisk(blockChain.chain);
 
-  res
-    .status(201)
-    .json({ success: true, message: "Block is added", data: blockChain.chain });
+  // pubNubNetwork.syncChain();
+
+  res.status(201).json({
+    success: true,
+    message: "Block added and synced with network",
+    data: newBlock,
+  });
 };
 
 export const getBlockByIndex = (req, res) => {
@@ -29,3 +33,22 @@ export const getBlockByIndex = (req, res) => {
 
   res.status(200).json({ success: true, message: "Block found", data: block });
 };
+
+// export const syncWithNetwork = (req, res) => {
+//   pubNubNetwork.syncChain();
+//   res.status(200).json({
+//     success: true,
+//     message: "Chain synced with network",
+//   });
+// };
+
+// export const getNetworkStatus = (req, res) => {
+//   res.status(200).json({
+//     success: true,
+//     data: {
+//       nodeId: pubNubNetwork.pubnub.getUserId(),
+//       chainLength: blockChain.chain.length,
+//       latestBlock: blockChain.chain[blockChain.chain.length - 1],
+//     },
+//   });
+// };

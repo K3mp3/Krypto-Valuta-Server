@@ -6,26 +6,5 @@
     "data": [],
     "nonce": 0,
     "difficulty": 3
-  },
-  {
-    "timestamp": 1748590617034,
-    "hash": "0010801b55be516b8cb0f213a1a65b80cc09881c1f72672806921d84bd548699",
-    "prevHash": "genesis-hash",
-    "nonce": 11,
-    "difficulty": 2
-  },
-  {
-    "timestamp": 1748590705248,
-    "hash": "00d10a8411cdd21d6820897c000c361c2cc2343699fb798f309082af123e6638",
-    "prevHash": "0010801b55be516b8cb0f213a1a65b80cc09881c1f72672806921d84bd548699",
-    "nonce": 35,
-    "difficulty": 1
-  },
-  {
-    "timestamp": 1748590710547,
-    "hash": "6dfb4133a29b3670478d903c6d186699db9ad308850c1eaa8f6a14af6b1288b4",
-    "prevHash": "00d10a8411cdd21d6820897c000c361c2cc2343699fb798f309082af123e6638",
-    "nonce": 1,
-    "difficulty": 0
   }
 ]
