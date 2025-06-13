@@ -1,4 +1,4 @@
-import UserRepository from "../../repositories/users-repositories.mjs";
+import UserRepository from "../repositories/users-repositories.mjs";
 
 export const signUpUser = async (req, res) => {
   const user = await new UserRepository().add(req.body);

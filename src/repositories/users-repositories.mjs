@@ -1,7 +1,8 @@
-import userModel from "../src/models/schemas/userModel.mjs";
+import userModel from "../models/schemas/userModel.mjs";
 
 export default class UserRepository {
   async add(user) {
+    console.log({ user: user });
     const { email, password } = user;
     return await userModel.create({ email, password });
   }
