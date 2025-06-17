@@ -1,4 +1,4 @@
-import { blockChain } from "../server.mjs";
+import { blockChain, pubNubNetwork } from "../server.mjs";
 import { saveChainToDisk } from "../utilities/save.mjs";
 
 export const listAllBlocks = (req, res) => {
@@ -12,7 +12,7 @@ export const addBlock = (req, res) => {
 
   saveChainToDisk(blockChain.chain);
 
-  // pubNubNetwork.syncChain();
+  pubNubNetwork.syncChain();
 
   res.status(201).json({
     success: true,
