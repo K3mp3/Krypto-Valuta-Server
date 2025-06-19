@@ -2,25 +2,79 @@ import { readFile, writeFile } from "fs/promises";
 import { createHash } from "../../utilities/hash.mjs";
 import { logError } from "../../utilities/logger.mjs";
 import Block from "./block.mjs";
+import BlockModel from "../schemas/blockModel.mjs";
 
 export default class Blockchain {
   constructor() {
     this.chain = [Block.createGenesisBlock()];
-    this.loadFromFile();
+    this.loadFromDatabase();
   }
 
-  async loadFromFile() {
+  async loadFromDatabase() {
     try {
-      const data = await readFile("blockchain.json", "utf8");
-      const parsedData = JSON.parse(data);
-      if (parsedData && Array.isArray(parsedData) && parsedData.length > 0) {
-        this.chain = parsedData;
+      const blocks = await BlockModel.find().sort({ index: 1 });
+      
+      if (blocks && blocks.length > 0) {
+        this.chain = blocks.map(blockDoc => {
+          return new Block({
+            timestamp: blockDoc.timestamp,
+            hash: blockDoc.hash,
+            prevHash: blockDoc.prevHash,
+            data: blockDoc.data,
+            nonce: blockDoc.nonce,
+            difficulty: blockDoc.difficulty
+          });
+        });
+        console.log(`Loaded ${blocks.length} blocks from database`);
+      } else {
+        await this.saveGenesisBlock();
       }
     } catch (error) {
-      await logError("Could not read blockchain.json", error);
-      console.log(
-        "No existing blockchain file found, starting with genesis block"
-      );
+      await logError("Could not load blockchain from database", error);
+      console.log("No existing blockchain in database, starting with genesis block");
+      await this.saveGenesisBlock();
+    }
+  }
+
+  async saveGenesisBlock() {
+    try {
+      const genesisBlock = this.chain[0];
+      await BlockModel.create({
+        index: 0,
+        timestamp: genesisBlock.timestamp,
+        hash: genesisBlock.hash,
+        prevHash: genesisBlock.prevHash,
+        data: genesisBlock.data,
+        nonce: genesisBlock.nonce,
+        difficulty: genesisBlock.difficulty
+      });
+      console.log("Genesis block saved to database");
+    } catch (error) {
+      if (error.code !== 11000) { 
+        await logError("Could not save genesis block", error);
+      }
+    }
+  }
+
+  async saveBlockToDatabase(block, index) {
+    try {
+      await BlockModel.create({
+        index: index,
+        timestamp: block.timestamp,
+        hash: block.hash,
+        prevHash: block.prevHash,
+        data: block.data,
+        nonce: block.nonce,
+        difficulty: block.difficulty
+      });
+      console.log(`Block ${index} saved to database`);
+    } catch (error) {
+      if (error.code === 11000) {
+        console.log(`Block ${index} already exists in database`);
+      } else {
+        await logError(`Could not save block ${index} to database`, error);
+        throw error;
+      }
     }
   }
 
@@ -38,8 +92,13 @@ export default class Blockchain {
       lastBlock: this.chain.at(-1),
       data,
     });
+    
     this.chain.push(newBlock);
+    
+    const blockIndex = this.chain.length - 1;
+    this.saveBlockToDatabase(newBlock, blockIndex);
     this.saveToFile();
+    
     return newBlock;
   }
 
@@ -51,19 +110,46 @@ export default class Blockchain {
     return this.chain;
   }
 
-  replaceChain(newChain) {
+  async replaceChain(newChain) {
     if (newChain.length <= this.chain.length) {
       console.log("Incoming chain is not longer. Chain is not replaced");
       return false;
     }
+
     if (!Blockchain.isValidChain(newChain)) {
       console.log("Incoming chain is invalid. Chain is not replaced");
       return false;
     }
+
     this.chain = newChain;
-    this.saveToFile();
+    
+    await this.syncDatabaseWithChain();
+    await this.saveToFile();
+    
     console.log("Chain replaced with:", newChain);
     return true;
+  }
+
+  async syncDatabaseWithChain() {
+    try {
+      await BlockModel.deleteMany({});
+      
+      for (let i = 0; i < this.chain.length; i++) {
+        const block = this.chain[i];
+        await BlockModel.create({
+          index: i,
+          timestamp: block.timestamp,
+          hash: block.hash,
+          prevHash: block.prevHash,
+          data: block.data,
+          nonce: block.nonce,
+          difficulty: block.difficulty
+        });
+      }
+      console.log("Database synchronized with new chain");
+    } catch (error) {
+      await logError("Could not sync database with chain", error);
+    }
   }
 
   static isValidChain(chain) {
@@ -72,11 +158,14 @@ export default class Blockchain {
     ) {
       return false;
     }
+
     for (let i = 1; i < chain.length; i++) {
       const { timestamp, data, hash, prevHash, nonce, difficulty } =
         chain.at(i);
       const lastHash = chain[i - 1].hash;
+
       if (lastHash !== prevHash) return false;
+
       const validHash = createHash(
         timestamp,
         data,
@@ -84,6 +173,7 @@ export default class Blockchain {
         nonce,
         difficulty
       );
+
       if (hash !== validHash) return false;
     }
     return true;

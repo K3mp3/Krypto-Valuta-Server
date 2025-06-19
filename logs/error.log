@@ -158,3 +158,5 @@
 [2025-06-18T08:50:42.864Z] Could not read blockchain.json - ENOENT: no such file or directory, open 'blockchain.json'
 [2025-06-18T08:50:44.784Z] Could not read blockchain.json - ENOENT: no such file or directory, open 'blockchain.json'
 [2025-06-18T08:56:22.709Z] Could not read blockchain.json - ENOENT: no such file or directory, open 'blockchain.json'
+[2025-06-19T08:56:25.787Z] Could not read blockchain.json - ENOENT: no such file or directory, open 'blockchain.json'
+[2025-06-19T09:52:26.605Z] Could not read blockchain.json - ENOENT: no such file or directory, open 'blockchain.json'
