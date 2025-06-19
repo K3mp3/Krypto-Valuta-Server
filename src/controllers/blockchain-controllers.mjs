@@ -1,11 +1,5 @@
-import Transaction from "../models/wallet/Transaction.mjs";
-import {
-  blockChain,
-  pubNubNetwork,
-  transactionPool,
-  wallet,
-} from "../server.mjs";
-import { saveChainToDisk } from "../utilities/save.mjs";
+import Miner from "../models/miner/Miner.mjs";
+import { blockChain, pubNubNetwork, transactionPool, wallet } from "../server.mjs";
 
 export const listAllBlocks = (req, res) => {
   res.status(200).json({
@@ -15,37 +9,26 @@ export const listAllBlocks = (req, res) => {
 };
 
 export const addBlock = (req, res) => {
-  const validTransactions = transactionPool.validateTransactions();
+  const miner = new Miner({
+    transactionPool: transactionPool,
+    wallet: wallet,
+    blockchain: blockChain,
+    pubNubNetwork: pubNubNetwork,
+  });
 
-  if (validTransactions.length === 0) {
+  const newBlock = miner.mineTransactions();
+
+  if (!newBlock) {
     return res.status(400).json({
       success: false,
       message: "No valid transactions to mine",
     });
   }
 
-  const rewardTransaction = Transaction.transactionReward({
-    miner: wallet,
-  });
-
-  transactionPool.addTransaction(rewardTransaction);
-
-  const blockData = [...validTransactions, rewardTransaction];
-  const newBlock = blockChain.addBlock({ data: blockData });
-
-  transactionPool.clearBlockTransactions({ chain: blockChain.chain });
-
-  saveChainToDisk(blockChain.chain);
-  pubNubNetwork.syncChain();
-
   res.status(201).json({
     success: true,
     message: "Block mined successfully",
-    data: {
-      block: newBlock,
-      transactionsCount: blockData.length,
-      reward: rewardTransaction,
-    },
+    data: newBlock,
   });
 };
 
@@ -63,21 +46,5 @@ export const getBlockByIndex = (req, res) => {
     success: true,
     message: "Block found",
     data: block,
-  });
-};
-
-export const getMiningStats = (req, res) => {
-  const pendingTransactions = Object.keys(
-    transactionPool.transactionMap
-  ).length;
-  const walletBalance = wallet.balance;
-
-  res.status(200).json({
-    success: true,
-    data: {
-      pendingTransactions,
-      walletBalance,
-      canMine: pendingTransactions > 0,
-    },
   });
 };

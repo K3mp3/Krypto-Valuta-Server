@@ -12,4 +12,8 @@ export default class UserRepository {
       ? await userModel.findOne({ email: email }).select("+password")
       : await userModel.findOne({ email: email });
   }
+
+  async findById(id) {
+    return await userModel.findById(id);
+  }
 }

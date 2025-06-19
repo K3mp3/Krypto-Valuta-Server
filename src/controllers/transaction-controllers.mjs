@@ -1,19 +1,23 @@
-import { pubNubNetwork, transactionPool, wallet } from "../server.mjs";
+import { blockChain, pubNubNetwork, transactionPool, wallet } from "../server.mjs";
+import Wallet from "../models/wallet/Wallet.mjs";
 
 export const addTransaction = (req, res) => {
   const { amount, recipient } = req.body;
+  
   let transaction = transactionPool.transactionExists({
     address: wallet.publicKey,
   });
 
   try {
-    if (transaction) transaction.update({ sender: wallet, recipient, amount });
-    else
+    if (transaction) {
+      transaction.update({ sender: wallet, recipient, amount });
+    } else {
       transaction = wallet.createTransaction({
         recipient,
         amount,
         chain: blockChain.chain,
       });
+    }
   } catch (error) {
     return res
       .status(400)
@@ -24,6 +28,20 @@ export const addTransaction = (req, res) => {
   pubNubNetwork.broadcastTransaction(transaction);
 
   res.status(201).json({ success: true, statusCode: 201, data: transaction });
+};
+
+export const getWalletInfo = (req, res) => {
+  const address = wallet.publicKey;
+  const balance = Wallet.calculateBalance({
+    chain: blockChain.chain,
+    address: address,
+  });
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    data: { address: address, balance: balance },
+  });
 };
 
 export const getTransactions = (req, res) => {
@@ -57,5 +75,13 @@ export const getTransactions = (req, res) => {
   res.status(200).json({
     success: true,
     data: allTransactions,
+  });
+};
+
+export const listAllTransactions = (req, res) => {
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    data: transactionPool.transactionMap,
   });
 };
