@@ -1,29 +1,57 @@
-import { blockChain, pubNubNetwork } from "../server.mjs";
+import Transaction from "../models/wallet/Transaction.mjs";
+import {
+  blockChain,
+  pubNubNetwork,
+  transactionPool,
+  wallet,
+} from "../server.mjs";
 import { saveChainToDisk } from "../utilities/save.mjs";
 
 export const listAllBlocks = (req, res) => {
-  res.status(200).json({ success: true, data: blockChain });
+  res.status(200).json({
+    success: true,
+    data: blockChain.getAllBlocks(),
+  });
 };
 
 export const addBlock = (req, res) => {
-  const { data } = req.body;
+  const validTransactions = transactionPool.validateTransactions();
 
-  const newBlock = blockChain.addBlock({ data });
+  if (validTransactions.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "No valid transactions to mine",
+    });
+  }
+
+  const rewardTransaction = Transaction.transactionReward({
+    miner: wallet,
+  });
+
+  transactionPool.addTransaction(rewardTransaction);
+
+  const blockData = [...validTransactions, rewardTransaction];
+  const newBlock = blockChain.addBlock({ data: blockData });
+
+  transactionPool.clearBlockTransactions({ chain: blockChain.chain });
 
   saveChainToDisk(blockChain.chain);
-
   pubNubNetwork.syncChain();
 
   res.status(201).json({
     success: true,
-    message: "Block added and synced with network",
-    data: newBlock,
+    message: "Block mined successfully",
+    data: {
+      block: newBlock,
+      transactionsCount: blockData.length,
+      reward: rewardTransaction,
+    },
   });
 };
 
 export const getBlockByIndex = (req, res) => {
   const { index } = req.params;
-  const block = blockChain.chain[index];
+  const block = blockChain.getBlock(index);
 
   if (!block)
     return res.status(404).json({
@@ -31,24 +59,25 @@ export const getBlockByIndex = (req, res) => {
       message: "Block not found",
     });
 
-  res.status(200).json({ success: true, message: "Block found", data: block });
+  res.status(200).json({
+    success: true,
+    message: "Block found",
+    data: block,
+  });
 };
 
-// export const syncWithNetwork = (req, res) => {
-//   pubNubNetwork.syncChain();
-//   res.status(200).json({
-//     success: true,
-//     message: "Chain synced with network",
-//   });
-// };
+export const getMiningStats = (req, res) => {
+  const pendingTransactions = Object.keys(
+    transactionPool.transactionMap
+  ).length;
+  const walletBalance = wallet.balance;
 
-// export const getNetworkStatus = (req, res) => {
-//   res.status(200).json({
-//     success: true,
-//     data: {
-//       nodeId: pubNubNetwork.pubnub.getUserId(),
-//       chainLength: blockChain.chain.length,
-//       latestBlock: blockChain.chain[blockChain.chain.length - 1],
-//     },
-//   });
-// };
+  res.status(200).json({
+    success: true,
+    data: {
+      pendingTransactions,
+      walletBalance,
+      canMine: pendingTransactions > 0,
+    },
+  });
+};
