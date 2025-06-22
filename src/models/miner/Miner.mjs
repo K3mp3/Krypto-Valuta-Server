@@ -8,9 +8,8 @@ export default class Miner {
     this.pubNubNetwork = pubNubNetwork;
   }
 
-  mineTransactions() {
+  async mineTransactions() {
     const validTransactions = this.transactionPool.validateTransactions();
-
     if (validTransactions.length === 0) {
       console.log("No valid transactions to mine");
       return false;
@@ -20,12 +19,14 @@ export default class Miner {
       miner: this.wallet,
     });
 
-    this.transactionPool.addTransaction(rewardTransaction);
+    await this.transactionPool.addTransaction(rewardTransaction);
 
     const blockData = [...validTransactions, rewardTransaction];
     const newBlock = this.blockchain.addBlock({ data: blockData });
 
-    this.transactionPool.clearBlockTransactions({ chain: this.blockchain.chain });
+    await this.transactionPool.clearBlockTransactions({
+      chain: this.blockchain.chain,
+    });
 
     this.pubNubNetwork.syncChain();
 

@@ -1,5 +1,5 @@
-import Transaction from "./Transaction.mjs";
 import TransactionSchema from "../schemas/transactionModel.mjs";
+import Transaction from "./Transaction.mjs";
 
 export default class TransactionPool {
   constructor() {
@@ -10,16 +10,18 @@ export default class TransactionPool {
   async loadFromDatabase() {
     try {
       const transactions = await TransactionSchema.find({ status: "pending" });
-      
+
       for (const txDoc of transactions) {
         this.transactionMap[txDoc.transactionId] = {
           id: txDoc.transactionId,
           input: txDoc.input,
-          outputMap: txDoc.outputMap
+          outputMap: txDoc.outputMap,
         };
       }
-      
-      console.log(`Loaded ${transactions.length} pending transactions from database`);
+
+      console.log(
+        `Loaded ${transactions.length} pending transactions from database`
+      );
     } catch (error) {
       console.error("Could not load transactions from database:", error);
     }
@@ -27,7 +29,7 @@ export default class TransactionPool {
 
   async addTransaction(transaction) {
     this.transactionMap[transaction.id] = transaction;
-    
+
     try {
       await TransactionSchema.findOneAndUpdate(
         { transactionId: transaction.id },
@@ -35,10 +37,11 @@ export default class TransactionPool {
           transactionId: transaction.id,
           input: transaction.input,
           outputMap: transaction.outputMap,
-          status: "pending"
+          status: "pending",
         },
         { upsert: true, new: true }
       );
+      console.log(`Transaction ${transaction.id} saved to database`);
     } catch (error) {
       console.error("Could not save transaction to database:", error);
     }
@@ -46,7 +49,7 @@ export default class TransactionPool {
 
   async clearBlockTransactions({ chain }) {
     const transactionsToConfirm = [];
-    
+
     for (let i = 1; i < chain.length; i++) {
       const block = chain[i];
       for (let transaction of block.data) {
@@ -54,7 +57,7 @@ export default class TransactionPool {
           delete this.transactionMap[transaction.id];
           transactionsToConfirm.push({
             transactionId: transaction.id,
-            blockIndex: i
+            blockIndex: i,
           });
         }
       }
@@ -65,13 +68,15 @@ export default class TransactionPool {
         for (const tx of transactionsToConfirm) {
           await TransactionSchema.findOneAndUpdate(
             { transactionId: tx.transactionId },
-            { 
+            {
               status: "confirmed",
-              blockIndex: tx.blockIndex
+              blockIndex: tx.blockIndex,
             }
           );
         }
-        console.log(`Confirmed ${transactionsToConfirm.length} transactions in database`);
+        console.log(
+          `Confirmed ${transactionsToConfirm.length} transactions in database`
+        );
       } catch (error) {
         console.error("Could not update transaction status:", error);
       }
@@ -80,9 +85,10 @@ export default class TransactionPool {
 
   async clearTransactions() {
     this.transactionMap = {};
-    
+
     try {
       await TransactionSchema.deleteMany({ status: "pending" });
+      console.log("Cleared all pending transactions from database");
     } catch (error) {
       console.error("Could not clear transactions from database:", error);
     }
@@ -90,18 +96,23 @@ export default class TransactionPool {
 
   async replaceMap(transactionMap) {
     this.transactionMap = transactionMap;
-    
+
     try {
       await TransactionSchema.deleteMany({ status: "pending" });
-      
+
       for (const [id, transaction] of Object.entries(transactionMap)) {
         await TransactionSchema.create({
           transactionId: id,
           input: transaction.input,
           outputMap: transaction.outputMap,
-          status: "pending"
+          status: "pending",
         });
       }
+      console.log(
+        `Replaced transaction map with ${
+          Object.keys(transactionMap).length
+        } transactions`
+      );
     } catch (error) {
       console.error("Could not replace transaction map in database:", error);
     }

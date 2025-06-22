@@ -1,8 +1,8 @@
-import { readFile, writeFile } from "fs/promises";
+// blockchain.mjs - FIXAD VERSION utan onödig fil-skrivning
 import { createHash } from "../../utilities/hash.mjs";
 import { logError } from "../../utilities/logger.mjs";
-import Block from "./block.mjs";
 import BlockModel from "../schemas/blockModel.mjs";
+import Block from "./block.mjs";
 
 export default class Blockchain {
   constructor() {
@@ -13,16 +13,16 @@ export default class Blockchain {
   async loadFromDatabase() {
     try {
       const blocks = await BlockModel.find().sort({ index: 1 });
-      
+
       if (blocks && blocks.length > 0) {
-        this.chain = blocks.map(blockDoc => {
+        this.chain = blocks.map((blockDoc) => {
           return new Block({
             timestamp: blockDoc.timestamp,
             hash: blockDoc.hash,
             prevHash: blockDoc.prevHash,
             data: blockDoc.data,
             nonce: blockDoc.nonce,
-            difficulty: blockDoc.difficulty
+            difficulty: blockDoc.difficulty,
           });
         });
         console.log(`Loaded ${blocks.length} blocks from database`);
@@ -31,7 +31,9 @@ export default class Blockchain {
       }
     } catch (error) {
       await logError("Could not load blockchain from database", error);
-      console.log("No existing blockchain in database, starting with genesis block");
+      console.log(
+        "No existing blockchain in database, starting with genesis block"
+      );
       await this.saveGenesisBlock();
     }
   }
@@ -46,11 +48,11 @@ export default class Blockchain {
         prevHash: genesisBlock.prevHash,
         data: genesisBlock.data,
         nonce: genesisBlock.nonce,
-        difficulty: genesisBlock.difficulty
+        difficulty: genesisBlock.difficulty,
       });
       console.log("Genesis block saved to database");
     } catch (error) {
-      if (error.code !== 11000) { 
+      if (error.code !== 11000) {
         await logError("Could not save genesis block", error);
       }
     }
@@ -65,7 +67,7 @@ export default class Blockchain {
         prevHash: block.prevHash,
         data: block.data,
         nonce: block.nonce,
-        difficulty: block.difficulty
+        difficulty: block.difficulty,
       });
       console.log(`Block ${index} saved to database`);
     } catch (error) {
@@ -78,27 +80,17 @@ export default class Blockchain {
     }
   }
 
-  async saveToFile() {
-    try {
-      await writeFile("blockchain.json", JSON.stringify(this.chain, null, 2));
-    } catch (error) {
-      await logError("Could not save blockchain.json", error);
-      console.error("Error saving blockchain to file:", error);
-    }
-  }
-
   addBlock({ data }) {
     const newBlock = Block.mine({
       lastBlock: this.chain.at(-1),
       data,
     });
-    
+
     this.chain.push(newBlock);
-    
+
     const blockIndex = this.chain.length - 1;
     this.saveBlockToDatabase(newBlock, blockIndex);
-    this.saveToFile();
-    
+
     return newBlock;
   }
 
@@ -122,10 +114,9 @@ export default class Blockchain {
     }
 
     this.chain = newChain;
-    
+
     await this.syncDatabaseWithChain();
-    await this.saveToFile();
-    
+
     console.log("Chain replaced with:", newChain);
     return true;
   }
@@ -133,7 +124,7 @@ export default class Blockchain {
   async syncDatabaseWithChain() {
     try {
       await BlockModel.deleteMany({});
-      
+
       for (let i = 0; i < this.chain.length; i++) {
         const block = this.chain[i];
         await BlockModel.create({
@@ -143,7 +134,7 @@ export default class Blockchain {
           prevHash: block.prevHash,
           data: block.data,
           nonce: block.nonce,
-          difficulty: block.difficulty
+          difficulty: block.difficulty,
         });
       }
       console.log("Database synchronized with new chain");
